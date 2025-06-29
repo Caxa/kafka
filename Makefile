@@ -13,7 +13,7 @@ up:
 	docker compose up -d
 
 down:
-	docker compose down
+	docker-compose down -v
 
 restart:
 	docker compose down && docker compose up -d --build
