@@ -4,6 +4,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"l0/cmd/internal/models"
 
@@ -13,10 +14,24 @@ import (
 var Conn *sql.DB
 
 func NewPostgres(dsn string) (*sql.DB, error) {
-	db, err := sql.Open("postgres", dsn)
+	var (
+		err error
+		db  *sql.DB
+	)
+
+	db, err = sql.Open("postgres", dsn)
+
+	for i := 0; i < 3 && err != nil; i++ {
+		db, err = sql.Open("postgres", dsn)
+		if err != nil {
+			time.Sleep(5 * time.Second)
+		}
+	}
+
 	if err != nil {
 		return nil, err
 	}
+
 	Conn = db
 	return db, nil
 }
