@@ -2,7 +2,8 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:14-alpine
+    image: postgres:14
+    container_name: postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -10,13 +11,13 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ordersdb"]
       interval: 5s
       timeout: 5s
       retries: 30
     volumes:
       - pg_data:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - demo-net
 
@@ -35,11 +36,9 @@ services:
       - "8081:8081"
     volumes:
       - ./wait-for-postgres.sh:/wait-for-postgres.sh
-
-    command: ["/bin/sh", "-c", "while ! nc -z postgres 5432; do sleep 2; done && /app/main"]
+    command: ["/bin/sh", "-c", "./wait-for-postgres.sh postgres:5432 -- sleep 5 && /app/main"]
     dns:
-      - 8.8.8.8  # Резервный DNS
-    
+      - 8.8.8.8
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://localhost:8081/health"]
       interval: 10s
@@ -83,6 +82,9 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     healthcheck:
       test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - demo-net
 
@@ -92,4 +94,4 @@ volumes:
 networks:
   demo-net:
     driver: bridge
-    attachable: true 
+    attachable: true
