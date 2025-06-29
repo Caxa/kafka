@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Order Lookup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f4f4f4;
+        }
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        #result {
+            margin-top: 30px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.1);
+        }
+        pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+    <h1>Поиск заказа по ID</h1>
+    <input type="text" id="orderID" placeholder="Введите order_uid">
+    <button onclick="getOrder()">Найти заказ</button>
+
+    <div id="result"></div>
+
+    <script>
+        function getOrder() {
+            const id = document.getElementById('orderID').value;
+            fetch('/order/' + id)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("Заказ не найден");
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    document.getElementById('result').innerHTML = 
+                        '<h3>Информация о заказе:</h3><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                })
+                .catch(error => {
+                    document.getElementById('result').innerHTML = 
+                        '<span style="color:red;">' + error.message + '</span>';
+                });
+        }
+    </script>
+</body>
+</html>
