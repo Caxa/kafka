@@ -1,22 +1,33 @@
 services:
   postgres:
-    image: postgres:14-alpine  # Используем облегчённый alpine-образ
-    container_name: postgres
+    image: postgres:14-alpine
     environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ordersdb
-      POSTGRES_USER: order_user
-      POSTGRES_PASSWORD: password
-    ports:
-      - "5433:5432"  # Изменён порт для избежания конфликтов
-    volumes:
-      - pg_data:/var/lib/postgresql/data
-    healthcheck:  # Добавлен healthcheck для контроля готовности БД
-      test: ["CMD-SHELL", "pg_isready -U order_user -d ordersdb"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
-      retries: 5
-    networks:
-      - demo-net
+      retries: 30
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+
+  app:
+    build: .
+    container_name: go-order-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_DSN: "postgres://order_user:password@postgres:5432/ordersdb?sslmode=disable"
+      DB_PASSWORD: "postgres" 
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./wait-for-postgres.sh:/wait-for-postgres.sh
+    command: ["/bin/sh", "-c", "./wait-for-postgres.sh postgres:5432 -- /app/main"]
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
@@ -25,7 +36,7 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     ports:
-      - "2181:2181"
+      - "2182:2181"
     healthcheck:  # Добавьте этот блок
       test: ["CMD", "nc", "-z", "localhost", "2181"]
       interval: 10s
@@ -42,7 +53,7 @@ services:
       zookeeper:
         condition: service_healthy
     ports:
-      - "9092:9092"
+      - "29092:9092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -56,24 +67,7 @@ services:
     networks:
       - demo-net
 
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: go-order-service
-    depends_on:
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    environment:
-      DB_DSN: postgres://order_user:password@postgres:5432/ordersdb?sslmode=disable
-      KAFKA_BROKER: kafka:9092
-      KAFKA_TOPIC: orders_topic
-    ports:
-      - "8081:8081"
-    networks:
-      - demo-net
+  
 
 volumes:
   pg_data:
