@@ -5,7 +5,6 @@ psql -v ON_ERROR_STOP=1 --username postgres <<-EOSQL
     CREATE USER order_user WITH PASSWORD 'password';
     CREATE DATABASE ordersdb OWNER order_user;
     GRANT ALL PRIVILEGES ON DATABASE ordersdb TO order_user;
-EOSQL
 
 psql -v ON_ERROR_STOP=1 --username postgres -d ordersdb <<-EOSQL
     CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
