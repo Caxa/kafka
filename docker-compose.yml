@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   postgres:
     image: postgres:14-alpine
@@ -25,13 +27,24 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DB_DSN: "postgres://order_user:password@postgres:5432/ordersdb?sslmode=disable"
-      DB_PASSWORD: "postgres" 
+      DB_DSN: "postgres://postgres:postgres@postgres:5432/ordersdb?sslmode=disable"
+      KAFKA_BROKER: "kafka:9092"
+      KAFKA_TOPIC: "orders_topic"
+      HTTP_PORT: ":8081"
     ports:
       - "8081:8081"
     volumes:
       - ./wait-for-postgres.sh:/wait-for-postgres.sh
-    command: ["/bin/sh", "-c", "./wait-for-postgres.sh postgres:5432 -- /app/main"]
+
+    command: ["/bin/sh", "-c", "while ! nc -z postgres 5432; do sleep 2; done && /app/main"]
+    dns:
+      - 8.8.8.8  # Резервный DNS
+    
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - demo-net
 
@@ -43,7 +56,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2182:2181"
-    healthcheck:  # Добавьте этот блок
+    healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "2181"]
       interval: 10s
       timeout: 5s
@@ -67,13 +80,11 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"  # Автосоздание топиков
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     healthcheck:
       test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
     networks:
       - demo-net
-
-  
 
 volumes:
   pg_data:
@@ -81,3 +92,4 @@ volumes:
 networks:
   demo-net:
     driver: bridge
+    attachable: true 

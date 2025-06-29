@@ -18,7 +18,10 @@ func main() {
 	log.Println("Starting Order Service...")
 
 	// Подключение к БД
-	dsn := getEnv("DB_DSN", "host=localhost port=5432 user=postgres password=1234 dbname=kafka sslmode=disable")
+	dsn := getEnv("DB_DSN", "")
+	if dsn == "" {
+		log.Fatal("DB_DSN environment variable is required")
+	}
 	dbConn, err := db.NewPostgres(dsn)
 	if err != nil {
 		log.Fatalf("failed to connect to DB: %v", err)
@@ -34,19 +37,26 @@ func main() {
 	// Запуск Kafka consumer
 	kafkaConfig := kafka.ConsumerConfig{
 		DB:     dbConn,
-		Broker: getEnv("KAFKA_BROKER", "localhost:9092"),
-		Topic:  getEnv("KAFKA_TOPIC", "orders_topic"),
+		Broker: getEnv("KAFKA_BROKER", ""),
+		Topic:  getEnv("KAFKA_TOPIC", ""),
+	}
+	if kafkaConfig.Broker == "" || kafkaConfig.Topic == "" {
+		log.Fatal("KAFKA_BROKER and KAFKA_TOPIC environment variables are required")
 	}
 	go kafka.StartConsumer(kafkaConfig)
 
 	// Настройка HTTP сервера
 	r := mux.NewRouter()
+	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}).Methods("GET")
 	r.HandleFunc("/order/{id}", handlers.GetOrderHandler).Methods("GET")
 	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./templates")))
 
+	httpPort := getEnv("HTTP_PORT", ":8081")
 	srv := &http.Server{
 		Handler:      r,
-		Addr:         getEnv("HTTP_PORT", ":8081"),
+		Addr:         httpPort,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
