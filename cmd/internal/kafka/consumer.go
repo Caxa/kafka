@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
-	"os"
 	"time"
 
 	"l0/cmd/internal/cache"
@@ -15,22 +14,17 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-func StartConsumer(dbConn *sql.DB) {
-	topic := os.Getenv("KAFKA_TOPIC")
-	if topic == "" {
-		topic = "orders_topic"
-		log.Println("KAFKA_TOPIC not set, defaulting to 'orders_topic'")
-	}
+type ConsumerConfig struct {
+	DB     *sql.DB
+	Broker string
+	Topic  string
+}
 
-	broker := os.Getenv("KAFKA_BROKER")
-	if broker == "" {
-		broker = "localhost:9092"
-		log.Println("KAFKA_BROKER not set, defaulting to 'localhost:9092'")
-	}
-
+func StartConsumer(config ConsumerConfig) {
+	// Настройка Kafka Reader
 	r := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:     []string{broker},
-		Topic:       topic,
+		Brokers:     []string{config.Broker},
+		Topic:       config.Topic,
 		GroupID:     "order-group",
 		StartOffset: kafka.LastOffset,
 		MinBytes:    1,
@@ -39,23 +33,24 @@ func StartConsumer(dbConn *sql.DB) {
 	})
 	defer r.Close()
 
-	log.Println("Kafka consumer started on topic:", topic)
+	log.Printf("Kafka consumer started on topic: %s (broker: %s)", config.Topic, config.Broker)
 
 	for {
 		msg, err := r.ReadMessage(context.Background())
 		if err != nil {
-			log.Println("Error reading message from Kafka:", err)
+			log.Printf("Error reading message from Kafka: %v", err)
+			time.Sleep(2 * time.Second) // Задержка при ошибках
 			continue
 		}
 
 		var order models.Order
 		if err := json.Unmarshal(msg.Value, &order); err != nil {
-			log.Println("Invalid message format:", err)
+			log.Printf("Invalid message format: %v", err)
 			continue
 		}
 
-		if err := db.InsertOrder(dbConn, order); err != nil {
-			log.Println("Failed to save order:", err)
+		if err := db.InsertOrder(config.DB, order); err != nil {
+			log.Printf("Failed to save order: %v", err)
 			continue
 		}
 

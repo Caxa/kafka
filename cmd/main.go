@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"l0/cmd/internal/cache"
@@ -14,26 +15,29 @@ import (
 )
 
 func main() {
-	// Настройка логгера
 	log.Println("Starting Order Service...")
 
 	// Подключение к БД
-	dsn := "host=localhost port=5432 user=postgres password=1234 dbname=kafka sslmode=disable"
-
+	dsn := getEnv("DB_DSN", "host=localhost port=5432 user=postgres password=1234 dbname=kafka sslmode=disable")
 	dbConn, err := db.NewPostgres(dsn)
 	if err != nil {
 		log.Fatalf("failed to connect to DB: %v", err)
 	}
 	defer dbConn.Close()
 
-	// Загрузка кэша из БД
+	// Инициализация кэша
 	if err := cache.LoadFromDB(dbConn); err != nil {
 		log.Fatalf("failed to load cache: %v", err)
 	}
 	log.Println("Cache initialized")
 
 	// Запуск Kafka consumer
-	go kafka.StartConsumer(dbConn)
+	kafkaConfig := kafka.ConsumerConfig{
+		DB:     dbConn,
+		Broker: getEnv("KAFKA_BROKER", "localhost:9092"),
+		Topic:  getEnv("KAFKA_TOPIC", "orders_topic"),
+	}
+	go kafka.StartConsumer(kafkaConfig)
 
 	// Настройка HTTP сервера
 	r := mux.NewRouter()
@@ -42,11 +46,18 @@ func main() {
 
 	srv := &http.Server{
 		Handler:      r,
-		Addr:         ":8081",
+		Addr:         getEnv("HTTP_PORT", ":8081"),
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
 
-	log.Println("HTTP server listening on :8081")
+	log.Printf("HTTP server listening on %s", srv.Addr)
 	log.Fatal(srv.ListenAndServe())
+}
+
+func getEnv(key, fallback string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return fallback
 }
