@@ -17,7 +17,6 @@ import (
 func main() {
 	log.Println("Starting Order Service...")
 
-	// Подключение к БД
 	dsn := getEnv("DB_DSN", "")
 	if dsn == "" {
 		log.Fatal("DB_DSN environment variable is required")
@@ -28,13 +27,11 @@ func main() {
 	}
 	defer dbConn.Close()
 
-	// Инициализация кэша
 	if err := cache.LoadFromDB(dbConn); err != nil {
 		log.Fatalf("failed to load cache: %v", err)
 	}
 	log.Println("Cache initialized")
 
-	// Запуск Kafka consumer
 	kafkaConfig := kafka.ConsumerConfig{
 		DB:     dbConn,
 		Broker: getEnv("KAFKA_BROKER", ""),
@@ -45,7 +42,6 @@ func main() {
 	}
 	go kafka.StartConsumer(kafkaConfig)
 
-	// Настройка HTTP сервера
 	r := mux.NewRouter()
 	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

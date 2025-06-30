@@ -17,7 +17,6 @@ func GetOrderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Если не в кэше — попробовать из БД
 	order, err := db.GetOrderByID(db.Conn, id)
 	if err != nil {
 		http.Error(w, "Order not found", http.StatusNotFound)

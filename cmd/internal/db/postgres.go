@@ -43,7 +43,6 @@ func InsertOrder(db *sql.DB, order models.Order) error {
 	}
 	defer tx.Rollback()
 
-	// Insert order
 	_, err = tx.Exec(`
 		INSERT INTO orders (
 			order_uid, track_number, entry, locale, internal_signature,
@@ -56,7 +55,6 @@ func InsertOrder(db *sql.DB, order models.Order) error {
 		return fmt.Errorf("insert order: %w", err)
 	}
 
-	// Insert delivery
 	_, err = tx.Exec(`
 		INSERT INTO deliveries (
 			order_uid, name, phone, zip, city, address, region, email
@@ -68,7 +66,6 @@ func InsertOrder(db *sql.DB, order models.Order) error {
 		return fmt.Errorf("insert delivery: %w", err)
 	}
 
-	// Insert payment
 	_, err = tx.Exec(`
 		INSERT INTO payments (
 			order_uid, transaction, request_id, currency, provider,
@@ -82,7 +79,6 @@ func InsertOrder(db *sql.DB, order models.Order) error {
 		return fmt.Errorf("insert payment: %w", err)
 	}
 
-	// Insert items
 	for _, item := range order.Items {
 		_, err := tx.Exec(`
 			INSERT INTO items (
@@ -103,7 +99,6 @@ func InsertOrder(db *sql.DB, order models.Order) error {
 func GetOrderByID(db *sql.DB, id string) (models.Order, error) {
 	var order models.Order
 
-	// Get main order
 	err := db.QueryRow(`
 		SELECT order_uid, track_number, entry, locale, customer_id,
 		       delivery_service, shardkey, sm_id, date_created, oof_shard
@@ -115,7 +110,6 @@ func GetOrderByID(db *sql.DB, id string) (models.Order, error) {
 		return order, err
 	}
 
-	// Get delivery
 	err = db.QueryRow(`
 		SELECT name, phone, zip, city, address, region, email
 		FROM deliveries WHERE order_uid = $1
@@ -125,7 +119,6 @@ func GetOrderByID(db *sql.DB, id string) (models.Order, error) {
 		return order, err
 	}
 
-	// Get payment
 	err = db.QueryRow(`
 		SELECT transaction, request_id, currency, provider,
 		       amount, payment_dt, bank, delivery_cost, goods_total, custom_fee
@@ -138,7 +131,6 @@ func GetOrderByID(db *sql.DB, id string) (models.Order, error) {
 		return order, err
 	}
 
-	// Get items
 	rows, err := db.Query(`
 		SELECT chrt_id, track_number, price, rid, name, sale,
 		       size, total_price, nm_id, brand, status
@@ -164,7 +156,6 @@ func GetOrderByID(db *sql.DB, id string) (models.Order, error) {
 }
 
 func GetAllOrders(db *sql.DB) ([]models.Order, error) {
-	// Простой пример — получить все order_uid и по ним вызвать GetOrderByID
 	rows, err := db.Query(`SELECT order_uid FROM orders`)
 	if err != nil {
 		return nil, err

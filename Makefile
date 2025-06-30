@@ -1,5 +1,3 @@
-# Makefile
-
 APP_NAME=go-order-service
 
 .PHONY: all build up down restart logs kafka-send psql init-db create-topic

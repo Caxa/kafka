@@ -12,7 +12,7 @@ COPY . .
 WORKDIR /app/cmd
 RUN go build -o /app/main .
 
-# Явно копируем скрипт в корень контейнера
+
 COPY wait-for-postgres.sh /app/wait-for-postgres.sh
 RUN chmod +x /app/wait-for-postgres.sh
 

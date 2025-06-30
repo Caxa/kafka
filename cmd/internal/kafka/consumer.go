@@ -21,7 +21,6 @@ type ConsumerConfig struct {
 }
 
 func StartConsumer(config ConsumerConfig) {
-	// Настройка Kafka Reader
 	r := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:     []string{config.Broker},
 		Topic:       config.Topic,
@@ -39,7 +38,7 @@ func StartConsumer(config ConsumerConfig) {
 		msg, err := r.ReadMessage(context.Background())
 		if err != nil {
 			log.Printf("Error reading message from Kafka: %v", err)
-			time.Sleep(2 * time.Second) // Задержка при ошибках
+			time.Sleep(2 * time.Second)
 			continue
 		}
 
