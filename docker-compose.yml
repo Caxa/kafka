@@ -88,6 +88,19 @@ services:
     networks:
       - demo-net
 
+  kafka-rest-proxy:
+    image: confluentinc/cp-kafka-rest:7.5.0
+    container_name: kafka-rest-proxy
+    depends_on:
+      - kafka
+    ports:
+      - "8082:8082"
+    environment:
+      KAFKA_REST_HOST_NAME: kafka-rest-proxy
+      KAFKA_REST_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
+    networks:
+      - demo-net
+
 volumes:
   pg_data:
 
